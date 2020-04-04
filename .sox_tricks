@@ -26,7 +26,7 @@ verbosity() {
 # Usage: cd /path/of/sounds && soundFinder;
 soundFinder() {
     #find . -type f -regextype posix-extended -regex ".*[.](wav|mp3|aif(f)?)$"
-    find . -type f -regex ".*" | grep -iE ".*[.](wav|mp3|aif(f)?)";
+    find . -type f -regex ".*" | grep -iE ".*[.](flac|wav|mp3|aif(f)?)";
 }
 ################################################################################
 # EOF INTERNAL HELPERS
@@ -141,7 +141,8 @@ trimsilence() {
     INPUT=$1;
     OUTPUT=$2;
 
-    sox $VERBOSITY "$INPUT" "$OUTPUT" silence -l 1 0.125 1% -1 2.0 1% ;
+    #sox $VERBOSITY "$INPUT" "$OUTPUT" silence -l 1 0.125 1% -1 2.0 1% ;
+    sox $VERBOSITY "$INPUT" "$OUTPUT" silence -l 1 0.125 1% ;
 
     return 0;
 }
@@ -167,6 +168,23 @@ to4410016() {
     return 0;
 }
 
+to4800024() {
+    VERBOSITY="";
+    verbosity "$@" && VERBOSITY="-V" && shift;
+
+    if [ "$1" = "" ];
+    then
+        [ "$VERBOSITY" = "-V" ] && \
+            echo "Missing file!";
+        exit 1;
+    fi;
+    INPUT=$1;
+    OUTPUT=$2;
+
+    sox $VERBOSITY -G "$INPUT" -b 24 "$OUTPUT" rate 48000 dither -s ;
+
+    return 0;
+}
 # VOICECLEANUP
 # Cleans up voice audio
 # Usage: voicecleanup [-V] "path/to/voice.wav" "path/to/clean.wav"
@@ -446,6 +464,27 @@ to4410016dir() {
     return 0;
 }
 
+to4800024dir() {
+    sox4800024Func() {
+        FILES=$(soundFinder);
+        VERBOSITY="";
+        verbosity "$@" && VERBOSITY="-V" && shift;
+
+        for file in $FILES;
+        do
+            to4800024 $VERBOSITY \
+                      "$file" \
+                      "converted/4800024_$(basename $file)";
+        done;
+    }
+
+    mkdir -p converted && \
+        sox4800024Func "$@" && \
+        verbosity "$@" && \
+        echo "Done converting sounds!";
+
+    return 0;
+}
 # VOICECLEANUPDIR
 # applies `voicecleanupdir` in the current directory of sounds
 voicecleanupdir() {
